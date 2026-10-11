@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Pulsing radar animation for Leaflet map pin */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.custom-pulsing-marker {
+  background: transparent;
+  border: none;
+}
+
+/* Custom styling for Leaflet popups */
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 0.25rem;
+}
+
+.custom-leaflet-popup .leaflet-popup-tip {
+  background: #ffffff;
+}
