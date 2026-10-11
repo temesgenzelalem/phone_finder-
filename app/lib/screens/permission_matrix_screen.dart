@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../services/hardware_service.dart';
 import 'enrollment_screen.dart';
 
 class PermissionMatrixScreen extends StatefulWidget {
@@ -13,6 +14,9 @@ class _PermissionMatrixScreenState extends State<PermissionMatrixScreen> with Wi
   bool _locationGranted = false;
   bool _notificationGranted = false;
   bool _batteryExempted = false;
+  bool _adminActive = false;
+
+  final HardwareService _hardwareService = HardwareService();
 
   @override
   void initState() {
@@ -38,11 +42,13 @@ class _PermissionMatrixScreenState extends State<PermissionMatrixScreen> with Wi
     final locStatus = await Permission.locationWhenInUse.status;
     final notifStatus = await Permission.notification.status;
     final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+    final adminStatus = await _hardwareService.isDeviceAdminActive();
 
     setState(() {
       _locationGranted = locStatus.isGranted;
       _notificationGranted = notifStatus.isGranted;
       _batteryExempted = batteryStatus.isGranted;
+      _adminActive = adminStatus;
     });
   }
 
@@ -59,6 +65,10 @@ class _PermissionMatrixScreenState extends State<PermissionMatrixScreen> with Wi
   Future<void> _requestBatteryOptimization() async {
     final status = await Permission.ignoreBatteryOptimizations.request();
     setState(() => _batteryExempted = status.isGranted);
+  }
+
+  Future<void> _requestDeviceAdmin() async {
+    await _hardwareService.requestDeviceAdmin();
   }
 
   @override
@@ -121,9 +131,8 @@ class _PermissionMatrixScreenState extends State<PermissionMatrixScreen> with Wi
                       icon: Icons.admin_panel_settings_rounded,
                       title: 'Device Administration',
                       description: 'Authorizes DevicePolicyManager.lockNow() to lock screen on demand.',
-                      isGranted: true, // Native receiver handles policy activation in Milestone 5
-                      onPressed: null,
-                      infoTag: 'Active in Engine',
+                      isGranted: _adminActive,
+                      onPressed: _requestDeviceAdmin,
                     ),
                   ],
                 ),
