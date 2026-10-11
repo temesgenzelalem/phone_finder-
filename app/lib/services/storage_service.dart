@@ -58,7 +58,7 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     const defaultUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://127.0.0.1:8000/api/v1',
+      defaultValue: 'https://phone-finder-api.onrender.com/api/v1',
     );
     return prefs.getString(_keyApiBaseUrl) ?? defaultUrl;
   }
