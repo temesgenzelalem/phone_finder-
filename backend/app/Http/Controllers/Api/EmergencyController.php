@@ -250,6 +250,9 @@ class EmergencyController extends Controller
             ],
         ]);
 
+        // Dispatch asynchronous high-priority push delivery job
+        \App\Jobs\DispatchDeviceCommandJob::dispatch($command);
+
         return response()->json([
             'status' => 'accepted',
             'message' => "Command '{$type}' created successfully.",

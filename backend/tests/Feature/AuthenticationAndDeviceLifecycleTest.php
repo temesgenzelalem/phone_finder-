@@ -280,6 +280,7 @@ class AuthenticationAndDeviceLifecycleTest extends TestCase
             'device_name' => 'Command Test Phone',
             'device_instance_id' => Str::uuid()->toString(),
             'recovery_key' => self::SAMPLE_RECOVERY_KEY,
+            'fcm_token' => 'fcm_test_token_for_commands',
         ]);
 
         $phoneTag = $enrollResponse->json('data.phone_tag');
