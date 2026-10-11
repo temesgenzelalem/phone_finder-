@@ -56,7 +56,11 @@ class StorageService {
 
   Future<String> getApiBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyApiBaseUrl) ?? 'http://127.0.0.1:8000/api/v1';
+    const defaultUrl = String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: 'http://127.0.0.1:8000/api/v1',
+    );
+    return prefs.getString(_keyApiBaseUrl) ?? defaultUrl;
   }
 
   Future<void> setProtectionActive(bool active) async {
