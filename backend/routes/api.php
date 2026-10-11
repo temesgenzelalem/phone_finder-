@@ -30,6 +30,9 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth.emergency')->group(function () {
         Route::get('/emergency/device/status', [EmergencyController::class, 'deviceStatus']);
+        Route::get('/emergency/status', [EmergencyController::class, 'deviceStatus']);
+        Route::post('/emergency/command', [EmergencyController::class, 'command'])
+            ->middleware('throttle:emergency-commands');
         Route::post('/emergency/commands/ring', [EmergencyController::class, 'ring'])
             ->middleware('throttle:emergency-commands');
         Route::post('/emergency/commands/lock', [EmergencyController::class, 'lock'])

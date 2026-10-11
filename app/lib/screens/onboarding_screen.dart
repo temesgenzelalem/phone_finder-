@@ -11,12 +11,12 @@ class OnboardingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(),
+              const SizedBox(height: 20),
               // Header Icon
               Center(
                 child: Container(
@@ -52,7 +52,7 @@ class OnboardingScreen extends StatelessWidget {
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 32),
 
               // Value Pillars
               _buildFeatureCard(
@@ -73,7 +73,7 @@ class OnboardingScreen extends StatelessWidget {
                 subtitle: 'Trigger a loud acoustic alarm and screen lock on demand via high-priority push commands.',
               ),
 
-              const Spacer(),
+              const SizedBox(height: 36),
 
               // Action Button
               ElevatedButton(

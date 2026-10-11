@@ -104,12 +104,23 @@ class EmergencyController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Emergency access granted.',
+            'emergency_token' => $plainEmergencyToken,
+            'expires_at' => $expiresAt->toIso8601String(),
+            'device' => [
+                'phone_tag' => $device->phone_tag,
+                'device_name' => $device->device_name,
+                'device_model' => $device->device_name,
+                'battery_level' => $device->battery_level,
+                'is_battery_charging' => $device->is_battery_charging,
+                'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+            ],
             'data' => [
                 'emergency_token' => $plainEmergencyToken,
                 'expires_at' => $expiresAt->toIso8601String(),
                 'device' => [
                     'phone_tag' => $device->phone_tag,
                     'device_name' => $device->device_name,
+                    'device_model' => $device->device_name,
                     'battery_level' => $device->battery_level,
                     'is_battery_charging' => $device->is_battery_charging,
                     'last_seen_at' => $device->last_seen_at?->toIso8601String(),
@@ -132,21 +143,46 @@ class EmergencyController extends Controller
             ->limit(10)
             ->get();
 
+        $payload = [
+            'device' => [
+                'phone_tag' => $device->phone_tag,
+                'device_name' => $device->device_name,
+                'device_model' => $device->device_name,
+                'battery_level' => $device->battery_level,
+                'is_battery_charging' => $device->is_battery_charging,
+                'is_charging' => $device->is_battery_charging,
+                'is_protection_active' => $device->is_protection_active,
+                'is_online_heuristic' => $device->last_seen_at ? $device->last_seen_at->diffInMinutes(now()) <= 5 : false,
+                'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+                'last_telemetry_at' => $device->last_seen_at?->toIso8601String(),
+            ],
+            'latest_location' => $latestLocation,
+            'recent_commands' => $activeCommands,
+            'active_commands' => $activeCommands,
+        ];
+
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'device' => [
-                    'phone_tag' => $device->phone_tag,
-                    'device_name' => $device->device_name,
-                    'battery_level' => $device->battery_level,
-                    'is_battery_charging' => $device->is_battery_charging,
-                    'is_protection_active' => $device->is_protection_active,
-                    'last_seen_at' => $device->last_seen_at?->toIso8601String(),
-                ],
-                'latest_location' => $latestLocation,
-                'active_commands' => $activeCommands,
-            ],
+            ...$payload,
+            'data' => $payload,
         ]);
+    }
+
+    /**
+     * Generic command dispatcher mapping command_type to specific action.
+     */
+    public function command(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'command_type' => ['required', 'string', 'in:ring,lock,locate,RING,LOCK,LOCATE'],
+        ]);
+
+        $type = strtoupper($validated['command_type']);
+        return match ($type) {
+            'RING' => $this->ring($request),
+            'LOCK' => $this->lock($request),
+            'LOCATE' => $this->locate($request),
+        };
     }
 
     /**
@@ -221,6 +257,12 @@ class EmergencyController extends Controller
             return response()->json([
                 'status' => 'accepted',
                 'message' => 'Command already in progress.',
+                'command' => [
+                    'id' => $existingRecentCommand->id,
+                    'command_type' => strtolower($existingRecentCommand->command_type),
+                    'status' => $existingRecentCommand->status,
+                    'expires_at' => $existingRecentCommand->expires_at->toIso8601String(),
+                ],
                 'data' => [
                     'command_id' => $existingRecentCommand->id,
                     'command_type' => $existingRecentCommand->command_type,
@@ -256,6 +298,12 @@ class EmergencyController extends Controller
         return response()->json([
             'status' => 'accepted',
             'message' => "Command '{$type}' created successfully.",
+            'command' => [
+                'id' => $command->id,
+                'command_type' => strtolower($command->command_type),
+                'status' => $command->status,
+                'expires_at' => $expiresAt->toIso8601String(),
+            ],
             'data' => [
                 'command_id' => $command->id,
                 'command_type' => $command->command_type,
