@@ -1,0 +1,27 @@
+# Backend
+backend/.env
+backend/.env.backup
+backend/.env.production
+backend/vendor/
+backend/storage/*.key
+backend/public/storage
+backend/.phpunit.cache
+
+# Flutter
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.packages
+
+# Web
+web/node_modules/
+web/.next/
+web/out/
+web/.env*.local
+
+# System & IDE
+.DS_Store
+.idea/
+.vscode/
+*.log
