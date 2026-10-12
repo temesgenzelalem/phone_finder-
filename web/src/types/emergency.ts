@@ -10,10 +10,13 @@ export interface DeviceInfo {
 export interface LocationData {
   latitude: number;
   longitude: number;
-  accuracy: number | null;
-  source: string;
+  accuracy?: number | null;
+  accuracy_meters?: number | null;
+  source?: string | null;
+  trigger_type?: string | null;
+  battery_level?: number | null;
   recorded_at: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export type CommandType = 'ring' | 'lock' | 'locate';

@@ -313,10 +313,12 @@ export default function EmergencyConsole({
             </button>
           </div>
           <p className="text-base font-bold text-white">
-            {location?.accuracy ? `±${Math.round(location.accuracy)} meters` : 'Unknown'}
+            {location?.accuracy || location?.accuracy_meters
+              ? `±${Math.round((location.accuracy ?? location.accuracy_meters)!)} meters`
+              : 'Unknown'}
           </p>
           <p className="text-[11px] text-slate-500">
-            Fix source: {location ? `${location.source.toUpperCase()} (${formatRelativeTime(location.recorded_at)})` : 'None'}
+            Fix source: {location ? `${(location.source || location.trigger_type || 'GPS').toUpperCase()} (${formatRelativeTime(location.recorded_at)})` : 'None'}
           </p>
         </div>
       </div>

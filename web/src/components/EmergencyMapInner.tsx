@@ -52,7 +52,9 @@ const createPulsingIcon = () => {
 };
 
 export default function EmergencyMapInner({ location }: EmergencyMapInnerProps) {
-  const { latitude, longitude, accuracy, recorded_at, source } = location;
+  const { latitude, longitude, recorded_at } = location;
+  const accuracy = location.accuracy ?? location.accuracy_meters ?? 15;
+  const source = (location.source || location.trigger_type || 'GPS').toUpperCase();
   const markerIcon = createPulsingIcon();
 
   const formattedDate = new Date(recorded_at).toLocaleString(undefined, {
@@ -79,7 +81,7 @@ export default function EmergencyMapInner({ location }: EmergencyMapInnerProps) 
         <MapRecenter lat={latitude} lng={longitude} />
 
         {/* Accuracy radius circle */}
-        {accuracy && accuracy > 0 && (
+        {accuracy > 0 && (
           <Circle
             center={[latitude, longitude]}
             radius={accuracy}
@@ -103,8 +105,8 @@ export default function EmergencyMapInner({ location }: EmergencyMapInnerProps) 
               </div>
               <div className="text-[11px] text-slate-700">
                 <div><strong>Coordinates:</strong> {latitude.toFixed(6)}, {longitude.toFixed(6)}</div>
-                {accuracy && <div><strong>Accuracy:</strong> ±{accuracy.toFixed(1)} meters</div>}
-                <div><strong>Provider:</strong> {source.toUpperCase()}</div>
+                <div><strong>Accuracy:</strong> ±{accuracy.toFixed(1)} meters</div>
+                <div><strong>Provider:</strong> {source}</div>
               </div>
               <div className="flex items-center space-x-1 text-[10px] text-slate-500 pt-1 border-t border-slate-200">
                 <Clock className="w-3 h-3" />
