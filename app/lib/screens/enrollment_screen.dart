@@ -15,7 +15,7 @@ class EnrollmentScreen extends StatefulWidget {
 class _EnrollmentScreenState extends State<EnrollmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _deviceNameController = TextEditingController(text: 'My Android Device');
-  final _baseUrlController = TextEditingController(text: 'http://127.0.0.1:8000/api/v1');
+  final _baseUrlController = TextEditingController(text: 'https://phone-finder-api.onrender.com/api/v1');
 
   late String _recoveryKey;
   bool _hasSavedKey = false;
@@ -29,6 +29,11 @@ class _EnrollmentScreenState extends State<EnrollmentScreen> {
     super.initState();
     _apiService = ApiService(_storageService);
     _recoveryKey = RecoveryKeyGenerator.generate();
+    _storageService.getApiBaseUrl().then((url) {
+      if (mounted && url.isNotEmpty) {
+        _baseUrlController.text = url;
+      }
+    });
   }
 
   @override
@@ -192,13 +197,13 @@ class _EnrollmentScreenState extends State<EnrollmentScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // API Base URL Field (with ADB reverse note)
+                // API Base URL Field (Live Cloud Backend)
                 TextFormField(
                   controller: _baseUrlController,
                   decoration: InputDecoration(
                     labelText: 'Backend API URL',
-                    hintText: 'http://127.0.0.1:8000/api/v1',
-                    helperText: 'For physical phone via USB, run "adb reverse tcp:8000 tcp:8000"',
+                    hintText: 'https://phone-finder-api.onrender.com/api/v1',
+                    helperText: 'Default connects to live production cloud backend on Render',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     prefixIcon: const Icon(Icons.dns_rounded),
                   ),
