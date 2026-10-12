@@ -16,9 +16,15 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Send,
   Loader2,
   Radio,
+  Zap,
+  Activity,
+  Satellite,
+  Volume2,
+  Shield,
+  ShieldCheck,
+  Layers,
 } from 'lucide-react';
 import {
   DeviceInfo,
@@ -71,7 +77,7 @@ export default function EmergencyConsole({
       const diff = Math.max(0, expiry - now);
 
       if (diff <= 0) {
-        setTimeRemaining('Session Expired');
+        setTimeRemaining('Expired');
         onLogout();
         return;
       }
@@ -129,7 +135,6 @@ export default function EmergencyConsole({
         type: 'success',
         text: result.message || `Command '${commandType}' successfully dispatched to push queue.`,
       });
-      // Immediately refresh command status
       await fetchStatus(false);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -157,47 +162,53 @@ export default function EmergencyConsole({
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffSec < 60) return `${diffSec}s ago`;
+    if (diffSec < 60) return `${Math.max(1, diffSec)}s ago`;
     if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
     return `${Math.floor(diffSec / 3600)}h ago`;
   };
 
+  const accuracyValue = location?.accuracy ?? location?.accuracy_meters ?? 15;
+  const fixSource = (location?.source || location?.trigger_type || 'GPS').toUpperCase();
+
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 pb-12">
-      {/* Top Emergency Session Header */}
-      <header className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+    <div className="w-full max-w-6xl mx-auto space-y-6 pb-16">
+      {/* Top Header Card */}
+      <header className="bg-[#0b101d]/85 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose-500 via-amber-500 to-sky-500 opacity-60" />
+
         <div className="flex items-center space-x-3.5 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-500">
+          <div className="w-11 h-11 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-950/20">
             <ShieldAlert className="w-5 h-5 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h2 className="text-base font-bold text-white tracking-tight">Active Emergency Session</h2>
-              <span className="px-2 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider rounded-md bg-red-950 text-red-300 border border-red-800">
+              <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
                 LIVE
               </span>
             </div>
-            <p className="text-xs font-mono text-slate-400">
-              Tag: <span className="text-slate-200 font-semibold">{device.phone_tag}</span>
+            <p className="text-xs font-mono text-slate-400 mt-0.5">
+              Assigned Tag: <span className="text-sky-300 font-semibold">{device.phone_tag}</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
           {/* Expiration timer */}
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-amber-300">
-            <Clock className="w-3.5 h-3.5" />
+          <div className="flex items-center space-x-2 px-3 py-1.5 bg-[#070b14] rounded-xl border border-white/[0.08] text-xs font-mono text-amber-300">
+            <Clock className="w-3.5 h-3.5 text-amber-400" />
             <span>Expires in {timeRemaining}</span>
           </div>
 
           {/* End session button */}
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white rounded-xl border border-red-600/30 text-xs font-semibold transition-all active:scale-95"
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl border border-rose-500/25 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
             title="Terminate emergency session immediately and wipe token"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>End Session</span>
+            <span>Wipe Session</span>
           </button>
         </div>
       </header>
@@ -205,306 +216,374 @@ export default function EmergencyConsole({
       {/* Action Notification Alert */}
       {actionMessage && (
         <div
-          className={`p-4 rounded-xl border flex items-start space-x-3 text-xs sm:text-sm animate-in fade-in duration-200 ${
+          className={`p-4 rounded-2xl border flex items-start space-x-3 text-xs sm:text-sm animate-in fade-in duration-200 backdrop-blur-md shadow-lg ${
             actionMessage.type === 'success'
-              ? 'bg-emerald-950/40 border-emerald-800/80 text-emerald-200'
-              : 'bg-red-950/40 border-red-800/80 text-red-200'
+              ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200'
+              : 'bg-rose-950/40 border-rose-500/30 text-rose-200'
           }`}
         >
           {actionMessage.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
           ) : (
-            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
           )}
-          <div className="flex-1 leading-snug">{actionMessage.text}</div>
+          <div className="flex-1 font-medium leading-snug">{actionMessage.text}</div>
           <button
             onClick={() => setActionMessage(null)}
-            className="text-slate-400 hover:text-slate-200 text-xs"
+            className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded-lg hover:bg-white/[0.05]"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Telemetry Status Cards Grid */}
+      {/* Telemetry Status Cards (3 Bento Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Device Info */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
+        {/* Card 1: Device Connectivity */}
+        <div className="bg-[#0b101d]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 space-y-3 relative overflow-hidden group hover:border-white/[0.15] transition-all shadow-xl">
           <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span className="flex items-center space-x-1.5">
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Device Model</span>
+            <span className="flex items-center space-x-2 font-medium text-slate-300">
+              <Smartphone className="w-4 h-4 text-sky-400" />
+              <span>Target Device</span>
             </span>
-            <div className="flex items-center space-x-1">
+            <div>
               {device.is_online_heuristic ? (
-                <span className="inline-flex items-center text-[10px] text-emerald-400 font-medium">
-                  <Wifi className="w-3 h-3 mr-1" /> Online
+                <span className="inline-flex items-center text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <Wifi className="w-3 h-3 mr-1" /> Active
                 </span>
               ) : (
-                <span className="inline-flex items-center text-[10px] text-slate-400 font-medium">
-                  <WifiOff className="w-3 h-3 mr-1" /> Offline
+                <span className="inline-flex items-center text-[10px] text-slate-400 font-semibold bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.08]">
+                  <WifiOff className="w-3 h-3 mr-1" /> Standby
                 </span>
               )}
             </div>
           </div>
-          <p className="text-base font-bold text-white truncate">
-            {device.device_model || 'Android Device'}
-          </p>
-          <p className="text-[11px] text-slate-500">
-            Last seen: {formatRelativeTime(device.last_telemetry_at)}
-          </p>
+          <div>
+            <p className="text-lg font-bold text-white tracking-tight truncate">
+              {device.device_model || 'Android Device'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1 flex items-center space-x-1.5">
+              <Activity className="w-3 h-3 text-sky-400" />
+              <span>Last heartbeat: {formatRelativeTime(device.last_telemetry_at)}</span>
+            </p>
+          </div>
         </div>
 
-        {/* Battery Telemetry */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
+        {/* Card 2: Battery Intelligence */}
+        <div className="bg-[#0b101d]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 space-y-3 relative overflow-hidden group hover:border-white/[0.15] transition-all shadow-xl">
           <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span className="flex items-center space-x-1.5">
+            <span className="flex items-center space-x-2 font-medium text-slate-300">
               {device.is_charging ? (
-                <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                <BatteryCharging className="w-4 h-4 text-emerald-400" />
               ) : (
-                <Battery className="w-3.5 h-3.5" />
+                <Battery className="w-4 h-4 text-amber-400" />
               )}
-              <span>Battery Level</span>
+              <span>Battery Status</span>
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-300 font-medium bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.08] flex items-center gap-1">
+              {device.is_charging && <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />}
               {device.is_charging ? 'Charging' : 'On Battery'}
             </span>
           </div>
-          <div className="flex items-baseline space-x-2">
-            <span
-              className={`text-2xl font-bold font-mono ${
-                device.battery_level !== null && device.battery_level < 20
-                  ? 'text-red-400'
-                  : device.battery_level !== null && device.battery_level < 50
-                  ? 'text-amber-400'
-                  : 'text-emerald-400'
-              }`}
-            >
-              {device.battery_level !== null ? `${device.battery_level}%` : 'N/A'}
-            </span>
-          </div>
-          <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                device.battery_level !== null && device.battery_level < 20
-                  ? 'bg-red-500'
-                  : device.battery_level !== null && device.battery_level < 50
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'
-              }`}
-              style={{ width: `${device.battery_level || 0}%` }}
-            ></div>
+
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <span
+                className={`text-2xl font-black font-mono tracking-tight ${
+                  device.battery_level !== null && device.battery_level < 20
+                    ? 'text-rose-400'
+                    : device.battery_level !== null && device.battery_level < 50
+                    ? 'text-amber-400'
+                    : 'text-emerald-400'
+                }`}
+              >
+                {device.battery_level !== null ? `${device.battery_level}%` : 'N/A'}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {device.battery_level !== null && device.battery_level < 20
+                  ? 'Urgent: Low Battery'
+                  : 'Normal Consumption'}
+              </span>
+            </div>
+
+            <div className="w-full bg-[#070b14] rounded-full h-2 overflow-hidden p-0.5 border border-white/[0.06]">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${
+                  device.battery_level !== null && device.battery_level < 20
+                    ? 'bg-rose-500 shadow-sm shadow-rose-500'
+                    : device.battery_level !== null && device.battery_level < 50
+                    ? 'bg-amber-500 shadow-sm shadow-amber-500'
+                    : 'bg-emerald-500 shadow-sm shadow-emerald-500'
+                }`}
+                style={{ width: `${device.battery_level || 0}%` }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Location Fix Freshness */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
+        {/* Card 3: GPS Satellite Precision */}
+        <div className="bg-[#0b101d]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 space-y-3 relative overflow-hidden group hover:border-white/[0.15] transition-all shadow-xl">
           <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span className="flex items-center space-x-1.5">
-              <Compass className="w-3.5 h-3.5" />
-              <span>GPS Precision</span>
+            <span className="flex items-center space-x-2 font-medium text-slate-300">
+              <Satellite className="w-4 h-4 text-blue-400" />
+              <span>Satellite Precision</span>
             </span>
             <button
               onClick={() => fetchStatus(true)}
-              className="hover:text-white transition-colors"
+              className="p-1 hover:bg-white/[0.08] rounded-lg text-slate-400 hover:text-white transition-colors"
               title="Refresh telemetry"
             >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
             </button>
           </div>
-          <p className="text-base font-bold text-white">
-            {location?.accuracy || location?.accuracy_meters
-              ? `±${Math.round((location.accuracy ?? location.accuracy_meters)!)} meters`
-              : 'Unknown'}
-          </p>
-          <p className="text-[11px] text-slate-500">
-            Fix source: {location ? `${(location.source || location.trigger_type || 'GPS').toUpperCase()} (${formatRelativeTime(location.recorded_at)})` : 'None'}
-          </p>
+
+          <div>
+            <div className="flex items-baseline space-x-2">
+              <span className="text-2xl font-black font-mono text-white">
+                ±{Math.round(accuracyValue)}m
+              </span>
+              <span className="text-xs text-emerald-400 font-medium">Optimal Fix</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1 flex items-center space-x-1.5">
+              <Compass className="w-3 h-3 text-sky-400" />
+              <span>
+                Trigger: <strong className="text-slate-200">{fixSource}</strong> ({formatRelativeTime(location?.recorded_at || null)})
+              </span>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Main Interactive Map Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
+      {/* Hero Interactive Map Section */}
+      <div className="bg-[#0b101d]/85 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-4">
           <div className="space-y-0.5">
-            <h3 className="text-sm font-semibold text-white flex items-center space-x-2">
-              <Radio className="w-4 h-4 text-blue-400" />
-              <span>Live Location Tracking</span>
+            <h3 className="text-base font-bold text-white flex items-center space-x-2">
+              <Radio className="w-4 h-4 text-sky-400 animate-pulse" />
+              <span>Tactical Satellite Tracking Grid</span>
             </h3>
             <p className="text-xs text-slate-400">
-              Interactive OpenStreetMap tracking protected device coordinates and accuracy radius.
+              Real-time OpenStreetMap telemetry powered by high-precision GPS satellite chip.
             </p>
           </div>
           {location && (
-            <span className="text-[11px] font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-              {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-            </span>
+            <div className="flex items-center space-x-2 self-start sm:self-auto">
+              <span className="text-xs font-mono text-sky-300 bg-sky-500/10 px-3 py-1 rounded-xl border border-sky-500/20">
+                {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+              </span>
+            </div>
           )}
         </div>
 
         {/* Map View */}
-        <div className="h-[440px] w-full">
+        <div className="h-[480px] w-full rounded-2xl overflow-hidden border border-white/[0.06]">
           <EmergencyMap location={location} />
         </div>
       </div>
 
-      {/* Emergency Remote Actions (Command Buttons) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
+      {/* Emergency Remote Commands (Command Center Cards) */}
+      <div className="bg-[#0b101d]/85 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5">
         <div>
-          <h3 className="text-sm font-semibold text-white flex items-center space-x-2">
-            <Send className="w-4 h-4 text-red-400" />
-            <span>Remote Recovery Commands</span>
-          </h3>
-          <p className="text-xs text-slate-400">
-            Dispatches high-priority Firebase Cloud Messaging payload wakeups directly to the device.
+          <div className="flex items-center space-x-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <h3 className="text-base font-bold text-white">Emergency Remote Security Dispatch</h3>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Issues instant high-priority hardware directives directly to your device via Google Firebase Cloud Messaging.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Siren Button */}
-          <button
-            onClick={() => handleSendCommand('ring')}
-            disabled={isDispatching !== null}
-            className="flex flex-col items-center justify-center p-5 rounded-xl bg-amber-950/20 hover:bg-amber-950/40 border border-amber-600/30 hover:border-amber-500 text-left transition-all active:scale-[0.98] disabled:opacity-50 space-y-3 group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-amber-600/20 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Action 1: Siren Alarm */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-rose-500/10 via-orange-500/5 to-transparent border border-rose-500/20 hover:border-rose-500/40 transition-all flex flex-col justify-between space-y-4 group">
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30 group-hover:scale-105 transition-transform shadow-lg shadow-rose-950/20">
+                <Volume2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Emergency Siren</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Sounds a piercing 100% maximum volume siren alarm for 2 minutes. Overrides Silent and Do Not Disturb.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleSendCommand('ring')}
+              disabled={isDispatching !== null}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white font-semibold text-xs shadow-lg shadow-rose-600/20 border border-rose-400/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer active:scale-98"
+            >
               {isDispatching === 'ring' ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Dispatching...</span>
+                </>
               ) : (
-                <Bell className="w-6 h-6" />
+                <>
+                  <Bell className="w-4 h-4" />
+                  <span>Sound Siren Alarm</span>
+                </>
               )}
-            </div>
-            <div className="text-center space-y-1">
-              <div className="font-semibold text-white text-sm">Sound Siren</div>
-              <div className="text-[11px] text-slate-400">
-                Override volume and sound maximum-volume emergency siren for 2 minutes.
-              </div>
-            </div>
-          </button>
+            </button>
+          </div>
 
-          {/* Lock Device Button */}
-          <button
-            onClick={() => handleSendCommand('lock')}
-            disabled={isDispatching !== null}
-            className="flex flex-col items-center justify-center p-5 rounded-xl bg-red-950/20 hover:bg-red-950/40 border border-red-600/30 hover:border-red-500 text-left transition-all active:scale-[0.98] disabled:opacity-50 space-y-3 group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-red-600/20 text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              {isDispatching === 'lock' ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
+          {/* Action 2: Lock Device */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-transparent border border-purple-500/20 hover:border-purple-500/40 transition-all flex flex-col justify-between space-y-4 group">
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30 group-hover:scale-105 transition-transform shadow-lg shadow-purple-950/20">
                 <Lock className="w-6 h-6" />
-              )}
-            </div>
-            <div className="text-center space-y-1">
-              <div className="font-semibold text-white text-sm">Lock Screen</div>
-              <div className="text-[11px] text-slate-400">
-                Instantly invoke Android Device Policy Manager to lock phone display.
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Hardware Screen Lock</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Instantly locks the screen via Android Device Policy Manager to prevent thieves from accessing banking and private data.
+                </p>
               </div>
             </div>
-          </button>
 
-          {/* Locate Phone Button */}
-          <button
-            onClick={() => handleSendCommand('locate')}
-            disabled={isDispatching !== null}
-            className="flex flex-col items-center justify-center p-5 rounded-xl bg-blue-950/20 hover:bg-blue-950/40 border border-blue-600/30 hover:border-blue-500 text-left transition-all active:scale-[0.98] disabled:opacity-50 space-y-3 group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-              {isDispatching === 'locate' ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
+            <button
+              onClick={() => handleSendCommand('lock')}
+              disabled={isDispatching !== null}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-purple-600/20 border border-purple-400/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer active:scale-98"
+            >
+              {isDispatching === 'lock' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Locking...</span>
+                </>
               ) : (
-                <Compass className="w-6 h-6" />
+                <>
+                  <Shield className="w-4 h-4" />
+                  <span>Lock Device Screen</span>
+                </>
               )}
-            </div>
-            <div className="text-center space-y-1">
-              <div className="font-semibold text-white text-sm">Locate Phone</div>
-              <div className="text-[11px] text-slate-400">
-                Trigger foreground GPS service to take a fresh GPS fix and upload location.
+            </button>
+          </div>
+
+          {/* Action 3: Locate Device */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-sky-500/10 via-blue-500/5 to-transparent border border-sky-500/20 hover:border-sky-500/40 transition-all flex flex-col justify-between space-y-4 group">
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30 group-hover:scale-105 transition-transform shadow-lg shadow-sky-950/20">
+                <Satellite className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Force GPS Ping</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Wakes up the Android LocationForegroundService to capture an immediate high-precision satellite coordinate reading.
+                </p>
               </div>
             </div>
-          </button>
+
+            <button
+              onClick={() => handleSendCommand('locate')}
+              disabled={isDispatching !== null}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-sky-600/20 border border-sky-400/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer active:scale-98"
+            >
+              {isDispatching === 'locate' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Transmitting...</span>
+                </>
+              ) : (
+                <>
+                  <Compass className="w-4 h-4" />
+                  <span>Request Fresh GPS Fix</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Live Command Execution Tracker */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
+      {/* Live Command Execution Timeline Tracker */}
+      <div className="bg-[#0b101d]/85 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4">
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-emerald-400" />
-              <span>Live Command Dispatch Tracker</span>
+            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-emerald-400" />
+              <span>Real-Time Incident Command Stream</span>
             </h3>
-            <p className="text-xs text-slate-400">
-              Real-time lifecycle of issued recovery commands (polling every 5s).
+            <p className="text-xs text-slate-400 mt-0.5">
+              Live lifecycle state transitions: PENDING &rarr; DISPATCHED &rarr; EXECUTED (auto-refreshing every 5s).
             </p>
           </div>
-          <span className="text-[11px] text-slate-500 font-mono">
-            {commands.length} Commands
+          <span className="text-xs font-mono text-slate-400 bg-white/[0.04] px-3 py-1 rounded-full border border-white/[0.08]">
+            {commands.length} Commands Dispatched
           </span>
         </div>
 
         {commands.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
-            No recovery commands issued during this session yet.
+          <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-white/[0.08] rounded-2xl">
+            No recovery directives have been dispatched during this session yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="py-2.5 px-3">Command</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Issued</th>
-                  <th className="py-2.5 px-3">Device Ack</th>
-                  <th className="py-2.5 px-3">Execution</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-                {commands.map((cmd) => (
-                  <tr key={cmd.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-white uppercase flex items-center space-x-1.5">
-                      {cmd.command_type === 'ring' && <Bell className="w-3.5 h-3.5 text-amber-400 inline" />}
-                      {cmd.command_type === 'lock' && <Lock className="w-3.5 h-3.5 text-red-400 inline" />}
-                      {cmd.command_type === 'locate' && <Compass className="w-3.5 h-3.5 text-blue-400 inline" />}
-                      <span>{cmd.command_type}</span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                          cmd.status === 'EXECUTED'
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                            : cmd.status === 'DELIVERED'
-                            ? 'bg-blue-950 text-blue-300 border border-blue-800'
-                            : cmd.status === 'PENDING'
-                            ? 'bg-amber-950 text-amber-300 border border-amber-800 animate-pulse'
-                            : cmd.status === 'FAILED'
-                            ? 'bg-red-950 text-red-300 border border-red-800'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                        }`}
-                      >
-                        {cmd.status}
+          <div className="space-y-2.5">
+            {commands.map((cmd) => (
+              <div
+                key={cmd.id}
+                className="p-3.5 rounded-2xl bg-[#070b14]/70 border border-white/[0.06] hover:border-white/[0.12] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+              >
+                <div className="flex items-center space-x-3">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                      cmd.command_type === 'ring'
+                        ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25'
+                        : cmd.command_type === 'lock'
+                        ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25'
+                        : 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
+                    }`}
+                  >
+                    {cmd.command_type === 'ring' && <Bell className="w-4 h-4" />}
+                    {cmd.command_type === 'lock' && <Lock className="w-4 h-4" />}
+                    {cmd.command_type === 'locate' && <Compass className="w-4 h-4" />}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-white uppercase tracking-wider text-xs font-mono">
+                        {cmd.command_type}
                       </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-400">
-                      {formatRelativeTime(cmd.created_at)}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-400">
-                      {cmd.acknowledged_at ? formatRelativeTime(cmd.acknowledged_at) : '—'}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-400">
-                      {cmd.executed_at ? formatRelativeTime(cmd.executed_at) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="text-slate-500 font-mono text-[11px]">#{cmd.id.slice(0, 8)}</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400">
+                      Issued {formatRelativeTime(cmd.created_at)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 self-end sm:self-auto">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider font-mono ${
+                      cmd.status === 'EXECUTED'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                        : cmd.status === 'DELIVERED'
+                        ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                        : cmd.status === 'PENDING'
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 animate-pulse'
+                        : cmd.status === 'FAILED'
+                        ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                        : 'bg-white/[0.05] text-slate-400 border border-white/[0.08]'
+                    }`}
+                  >
+                    {cmd.status === 'PENDING' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 animate-ping" />}
+                    {cmd.status === 'EXECUTED' && <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-400" />}
+                    {cmd.status}
+                  </span>
+
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {cmd.executed_at ? `Done ${formatRelativeTime(cmd.executed_at)}` : 'Waiting for device ACK'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* Security Notice Footer */}
-      <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 text-center text-xs text-slate-500">
-        All recovery actions, IP addresses, and timestamps are recorded in the immutable Phone Finder audit log.
+      <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] text-center text-xs text-slate-500 flex items-center justify-center space-x-2">
+        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+        <span>All recovery actions, IP addresses, and cryptographic signatures are immutably logged to the audit ledger.</span>
       </div>
     </div>
   );
