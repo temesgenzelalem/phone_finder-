@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const backendUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:8000";
+const backendUrl = process.env.BACKEND_API_URL || "https://phone-finder-api.onrender.com";
 
 const nextConfig: NextConfig = {
   async rewrites() {
