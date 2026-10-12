@@ -2,18 +2,20 @@
 
 import React, { useState } from 'react';
 import {
-  ShieldAlert,
-  KeyRound,
   Smartphone,
-  AlertCircle,
-  ArrowRight,
-  Loader2,
+  KeyRound,
+  AlertTriangle,
+  Zap,
   Eye,
   EyeOff,
-  ClipboardPaste,
+  Fingerprint,
+  Clock,
+  FileSignature,
+  ChevronRight,
   ShieldCheck,
-  Lock,
+  ClipboardPaste,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { loginEmergency, ApiError } from '@/lib/api';
 
 interface EmergencyLoginProps {
@@ -28,46 +30,48 @@ export default function EmergencyLogin({ onLoginSuccess }: EmergencyLoginProps) 
   const [phoneTag, setPhoneTag] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
+  const handleEnter = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const tag = phoneTag.trim().toUpperCase();
     const key = recoveryKey.trim().toUpperCase();
 
-    if (!tag) {
-      setErrorMessage('Please enter your Phone Tag.');
+    if (!tag || !key) {
+      setError('Both Phone Tag and Recovery Key are required.');
       return;
     }
-    if (!key) {
-      setErrorMessage('Please enter your 12-character Recovery Key.');
+    if (key.length < 12) {
+      setError('Recovery Key must be at least 12 characters.');
       return;
     }
 
-    setIsLoading(true);
+    setError(null);
+    setIsVerifying(true);
 
     try {
       const response = await loginEmergency(tag, key);
       if (response.status === 'success' && response.emergency_token && response.expires_at) {
-        onLoginSuccess(
-          response.emergency_token,
-          response.expires_at,
-          response.device || { phone_tag: tag, device_model: null }
-        );
+        // Allow a brief moment for the verification UX steps to animate
+        setTimeout(() => {
+          onLoginSuccess(
+            response.emergency_token!,
+            response.expires_at!,
+            response.device || { phone_tag: tag, device_model: null }
+          );
+        }, 800);
       } else {
-        setErrorMessage(response.message || 'Authentication failed. Please check your credentials.');
+        setIsVerifying(false);
+        setError(response.message || 'Authentication failed. Please check your credentials.');
       }
     } catch (err) {
+      setIsVerifying(false);
       if (err instanceof ApiError) {
-        setErrorMessage(err.message);
+        setError(err.message);
       } else {
-        setErrorMessage('Could not connect to the recovery backend. Please try again.');
+        setError('Could not connect to the recovery backend. Please try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -78,142 +82,201 @@ export default function EmergencyLogin({ onLoginSuccess }: EmergencyLoginProps) 
         setRecoveryKey(text.trim().toUpperCase());
       }
     } catch {
-      // Clipboard permissions denied
+      // Clipboard access denied
     }
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
-      {/* Top Header Card */}
-      <div className="text-center mb-8 space-y-3">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/20 text-rose-400 mb-2 shadow-xl shadow-rose-950/20 relative">
-          <ShieldAlert className="w-8 h-8" />
-          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500"></span>
-          </span>
+    <div className="w-full max-w-md mx-auto">
+      {/* Hero */}
+      <div className="mb-8 text-center animate-fade-in">
+        <div className="mb-4 flex justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 animate-pulse-ring rounded-2xl bg-destructive/20" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 ring-1 ring-destructive/30">
+              <Zap className="h-6 w-6 text-destructive" />
+            </div>
+          </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+        <span className="mb-2 inline-block rounded-full bg-destructive/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest text-destructive">
+          Emergency Mode
+        </span>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Emergency Recovery Console
         </h1>
-        <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-          Access and secure your lost or stolen Android device from any borrowed browser without SMS or Google 2FA loops.
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Access and secure your lost Android phone from any browser using your verified
+          Phone Tag and Recovery Key.
         </p>
       </div>
 
-      {/* Main Glass Card */}
-      <div className="bg-[#0b101d]/80 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 sm:p-9 shadow-2xl relative overflow-hidden group">
-        {/* Subtle decorative top border glow */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-70"></div>
-
-        {errorMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-start space-x-3 text-rose-300 text-sm animate-in fade-in">
-            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
-          </div>
+      {/* Form card */}
+      <div
+        className={cn(
+          'rounded-2xl border border-border bg-card/80 p-6 backdrop-blur-xl transition-all',
+          isVerifying && 'border-primary/30 glow-primary'
         )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Phone Tag Field */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="phoneTag" className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Assigned Phone Tag
-              </label>
-              <span className="text-[11px] text-slate-500 font-mono">Format: PF-XXXX-XXXX</span>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                <Smartphone className="w-4 h-4" />
-              </div>
-              <input
-                id="phoneTag"
-                type="text"
-                value={phoneTag}
-                onChange={(e) => setPhoneTag(e.target.value.toUpperCase())}
-                placeholder="e.g. PF-P4YF-YRCX"
-                autoComplete="off"
-                spellCheck="false"
-                className="w-full pl-10 pr-4 py-3 bg-[#070b14] border border-white/[0.08] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-white placeholder-slate-600 text-sm font-mono tracking-wider transition-all outline-none"
-              />
-            </div>
+      >
+        <form onSubmit={handleEnter}>
+          {/* Phone Tag */}
+          <div className="mb-5">
+            <label className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Smartphone className="h-3.5 w-3.5 text-primary" />
+                Phone Tag
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground/70">PF-XXXX-XXXX-XX</span>
+            </label>
+            <input
+              type="text"
+              value={phoneTag}
+              onChange={(e) => setPhoneTag(e.target.value.toUpperCase())}
+              placeholder="e.g. PF-P4YF-YRCX"
+              disabled={isVerifying}
+              className="h-11 w-full rounded-lg border border-input bg-secondary/50 px-4 font-mono text-sm tracking-wider text-foreground placeholder:text-muted-foreground/40 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+            />
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              Assigned during phone enrollment
+            </p>
           </div>
 
-          {/* Recovery Key Field */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="recoveryKey" className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Offline Recovery Key
+          {/* Recovery Key */}
+          <div className="mb-6">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <KeyRound className="h-3.5 w-3.5 text-primary" />
+                Recovery Key
               </label>
               <button
                 type="button"
                 onClick={handlePasteKey}
-                className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center space-x-1 transition-colors"
-                title="Paste key from clipboard"
+                disabled={isVerifying}
+                className="text-[10px] text-primary hover:underline flex items-center gap-1 font-mono transition-opacity disabled:opacity-50"
               >
-                <ClipboardPaste className="w-3 h-3" />
-                <span>Paste Key</span>
+                <ClipboardPaste className="h-3 w-3" />
+                Paste
               </button>
             </div>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                <KeyRound className="w-4 h-4" />
-              </div>
               <input
-                id="recoveryKey"
                 type={showKey ? 'text' : 'password'}
                 value={recoveryKey}
                 onChange={(e) => setRecoveryKey(e.target.value.toUpperCase())}
                 placeholder="PF-XXXX-XXXX-XXXX"
-                autoComplete="off"
-                spellCheck="false"
-                className="w-full pl-10 pr-11 py-3 bg-[#070b14] border border-white/[0.08] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-white placeholder-slate-600 text-sm font-mono tracking-wider transition-all outline-none"
+                disabled={isVerifying}
+                className="h-11 w-full rounded-lg border border-input bg-secondary/50 px-4 pr-11 font-mono text-sm tracking-wider text-foreground placeholder:text-muted-foreground/40 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                tabIndex={-1}
               >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-[11px] text-slate-500 leading-normal">
-              128-bit high-entropy secret generated during initial phone enrollment.
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              12-character high-entropy secret saved when enabling protection
             </p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs text-destructive animate-fade-in">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/25 border border-blue-400/20 hover:shadow-blue-500/40 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99] mt-2"
+            disabled={isVerifying}
+            className={cn(
+              'group relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-lg text-sm font-semibold transition-all cursor-pointer',
+              isVerifying
+                ? 'bg-primary/20 text-primary/70'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90 glow-primary'
+            )}
           >
-            {isLoading ? (
+            {isVerifying ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Verifying Cryptographic Proof...</span>
+                <Fingerprint className="h-4 w-4 animate-pulse" />
+                <span>Verifying Zero-Knowledge Proof...</span>
               </>
             ) : (
               <>
-                <span>Enter Emergency Recovery Mode</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Enter Emergency Mode</span>
+                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </>
             )}
           </button>
-        </form>
 
-        {/* Security badges */}
-        <div className="mt-7 pt-6 border-t border-white/[0.06] grid grid-cols-2 gap-3 text-slate-400 text-[11px]">
-          <div className="flex items-center space-x-2 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.04]">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Zero-Knowledge Argon2id Proof</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.04]">
-            <Lock className="w-4 h-4 text-blue-400 shrink-0" />
-            <span>15-Min Auto Session Wipe</span>
-          </div>
-        </div>
+          {/* Verification Steps Indicator */}
+          {isVerifying && (
+            <div className="mt-4 space-y-2 animate-fade-in">
+              {['Deriving key via Argon2id', 'Verifying zero-knowledge proof', 'Establishing encrypted session'].map((step, i) => (
+                <div
+                  key={step}
+                  className="flex items-center gap-2 text-[11px] text-muted-foreground"
+                  style={{ animation: `fade-in 0.4s ease-out ${i * 0.4}s both` }}
+                >
+                  <div className="h-3 w-3 rounded-full border border-primary/30 border-t-primary animate-spin" />
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </form>
       </div>
+
+      {/* Trust Indicators */}
+      <div className="mt-6 space-y-2.5">
+        <TrustItem
+          icon={ShieldCheck}
+          text="Zero-Knowledge Argon2id verification protects your secret key."
+          color="success"
+        />
+        <TrustItem
+          icon={Clock}
+          text="Emergency sessions automatically expire after 15 minutes of inactivity."
+          color="primary"
+        />
+        <TrustItem
+          icon={FileSignature}
+          text="All emergency recovery actions are cryptographically signed & logged."
+          color="warning"
+          warning
+        />
+      </div>
+    </div>
+  );
+}
+
+function TrustItem({
+  icon: Icon,
+  text,
+  color,
+  warning,
+}: {
+  icon: typeof ShieldCheck;
+  text: string;
+  color: 'success' | 'primary' | 'warning';
+  warning?: boolean;
+}) {
+  const colorMap = {
+    success: 'text-success bg-success/10 ring-success/20',
+    primary: 'text-primary bg-primary/10 ring-primary/20',
+    warning: 'text-warning bg-warning/10 ring-warning/20',
+  };
+  const prefix = warning ? '!' : '\u2713';
+
+  return (
+    <div className="flex items-start gap-2.5 rounded-lg border border-border/50 bg-card/40 px-3.5 py-2.5 backdrop-blur-sm transition-colors hover:border-border">
+      <div className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ring-1', colorMap[color])}>
+        {prefix}
+      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>
     </div>
   );
 }
