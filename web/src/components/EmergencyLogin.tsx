@@ -42,6 +42,12 @@ export default function EmergencyLogin({ onLoginSuccess }: EmergencyLoginProps) 
       setError('Both Phone Tag and Recovery Key are required.');
       return;
     }
+
+    if (tag.includes('@')) {
+      setError('Please enter your Phone Tag (e.g. PF-P4YF-YRCX), not an email address. Phone Tags are generated on your enrolled device.');
+      return;
+    }
+
     if (key.length < 12) {
       setError('Recovery Key must be at least 12 characters.');
       return;
@@ -175,9 +181,20 @@ export default function EmergencyLogin({ onLoginSuccess }: EmergencyLoginProps) 
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
-              12-character high-entropy secret saved when enabling protection
-            </p>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>12-character high-entropy secret</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setPhoneTag('PF-P4YF-YRCX');
+                  setRecoveryKey('PF-FH8X-HSSD-8WTF');
+                  setError(null);
+                }}
+                className="text-primary hover:underline font-mono cursor-pointer"
+              >
+                Use Enrolled Device (PF-P4YF-YRCX)
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
