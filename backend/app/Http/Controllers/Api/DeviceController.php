@@ -163,6 +163,26 @@ class DeviceController extends Controller
     }
 
     /**
+     * Retrieve pending or dispatched commands awaiting execution on this device.
+     */
+    public function pendingCommands(Request $request): JsonResponse
+    {
+        /** @var Device $device */
+        $device = $request->attributes->get('device');
+
+        $commands = DeviceCommand::where('device_id', $device->id)
+            ->whereIn('status', ['PENDING', 'DISPATCHED'])
+            ->where('expires_at', '>', now())
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $commands,
+        ]);
+    }
+
+    /**
      * Acknowledge command receipt, progress, or execution.
      */
     public function ackCommand(Request $request): JsonResponse

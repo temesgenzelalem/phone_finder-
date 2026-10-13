@@ -118,6 +118,14 @@ class EndToEndLifecycleAndResearchHypothesesTest extends TestCase
         $command->refresh();
         $this->assertTrue(in_array($command->status, ['PENDING', 'DISPATCHED']));
 
+        // 7b. Device fetches pending commands
+        $pendingResponse = $this->withHeader('Authorization', "Bearer {$deviceToken}")
+            ->getJson('/api/v1/device/commands/pending');
+
+        $pendingResponse->assertStatus(200)
+            ->assertJsonPath('status', 'success');
+        $this->assertNotEmpty($pendingResponse->json('data'));
+
         // 8. Device Acknowledges and Executes Command via /api/v1/device/commands/ack
         $ackResponse = $this->withHeader('Authorization', "Bearer {$deviceToken}")
             ->postJson('/api/v1/device/commands/ack', [

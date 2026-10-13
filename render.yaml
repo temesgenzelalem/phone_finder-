@@ -32,7 +32,7 @@ services:
       - key: DB_SSLMODE
         value: require
       - key: QUEUE_CONNECTION
-        value: database
+        value: sync
       - key: SESSION_DRIVER
         value: database
       - key: CACHE_STORE

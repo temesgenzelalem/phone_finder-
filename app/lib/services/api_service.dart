@@ -85,6 +85,32 @@ class ApiService {
     }
   }
 
+  /// Fetch pending or dispatched commands awaiting execution
+  Future<List<Map<String, dynamic>>> getPendingCommands() async {
+    final token = await _storageService.getDeviceToken();
+    if (token == null) return [];
+
+    final baseUrl = await _getBaseUrl();
+    final url = Uri.parse('$baseUrl/device/commands/pending');
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = data['data'] as List<dynamic>?;
+      if (list != null) {
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    }
+    return [];
+  }
+
   /// Acknowledge command receipt or execution
   Future<void> ackCommand({
     required String commandId,

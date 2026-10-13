@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth.device')->group(function () {
         Route::post('/device/telemetry', [DeviceController::class, 'telemetry']);
         Route::post('/device/fcm-token', [DeviceController::class, 'updateFcmToken']);
+        Route::get('/device/commands/pending', [DeviceController::class, 'pendingCommands']);
         Route::post('/device/commands/ack', [DeviceController::class, 'ackCommand']);
         Route::get('/device/audit-logs', [DeviceController::class, 'auditLogs']);
         Route::post('/device/revoke', [DeviceController::class, 'revoke']);

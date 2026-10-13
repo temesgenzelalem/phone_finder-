@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
@@ -29,11 +30,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isBatteryCharging = false;
   Map<String, dynamic>? _lastLocation;
 
+  Timer? _commandPollTimer;
+  bool _isProcessingCommands = false;
+  int _telemetrySyncCounter = 0;
+
   @override
   void initState() {
     super.initState();
     _apiService = ApiService(_storageService);
     _loadAllData();
+    _startCommandPolling();
+  }
+
+  @override
+  void dispose() {
+    _commandPollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCommandPolling() {
+    _commandPollTimer?.cancel();
+    _commandPollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _checkAndProcessCommands();
+    });
   }
 
   Future<void> _loadAllData() async {
@@ -57,6 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (active) {
       await _hardwareService.startForegroundProtection();
+      _sendBackgroundTelemetry();
     }
   }
 
@@ -78,8 +98,124 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (value) {
       await _hardwareService.startForegroundProtection();
+      _startCommandPolling();
     } else {
       await _hardwareService.stopForegroundProtection();
+      _commandPollTimer?.cancel();
+    }
+  }
+
+  Future<void> _sendBackgroundTelemetry() async {
+    try {
+      final battery = await _hardwareService.getBatteryStatus();
+      final location = await _hardwareService.getLastKnownLocation();
+
+      final lat = location?['latitude'] as double? ?? 11.5972;
+      final lng = location?['longitude'] as double? ?? 37.3884;
+      final acc = location?['accuracy'] as double? ?? 15.0;
+
+      await _apiService.sendTelemetry(
+        latitude: lat,
+        longitude: lng,
+        accuracyMeters: acc,
+        batteryLevel: battery['level'] as int?,
+        isBatteryCharging: battery['is_charging'] as bool?,
+        triggerType: 'HEARTBEAT',
+        recordedAt: DateTime.now(),
+      );
+
+      if (mounted) {
+        setState(() {
+          _batteryLevel = battery['level'] as int;
+          _isBatteryCharging = battery['is_charging'] as bool;
+          _lastLocation = location;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _checkAndProcessCommands() async {
+    if (!mounted || !_isProtectionActive || _isProcessingCommands) return;
+    _isProcessingCommands = true;
+
+    _telemetrySyncCounter++;
+    if (_telemetrySyncCounter >= 4) {
+      _telemetrySyncCounter = 0;
+      _sendBackgroundTelemetry();
+    }
+
+    try {
+      final pendingList = await _apiService.getPendingCommands();
+      for (final cmd in pendingList) {
+        final commandId = cmd['id'] as String;
+        final commandType = (cmd['command_type'] as String).toUpperCase();
+        final rawPayload = cmd['payload'];
+        final payload = rawPayload is Map ? Map<String, dynamic>.from(rawPayload) : <String, dynamic>{};
+
+        // Acknowledge command receipt as DELIVERED
+        try {
+          await _apiService.ackCommand(
+            commandId: commandId,
+            status: 'DELIVERED',
+          );
+        } catch (_) {}
+
+        // Execute matching hardware action
+        if (commandType == 'RING') {
+          final duration = (payload['duration_seconds'] as num?)?.toInt() ?? 120;
+          await _hardwareService.startAlarm(durationSeconds: duration);
+          if (mounted) setState(() => _isAlarmPlaying = true);
+
+          await _apiService.ackCommand(
+            commandId: commandId,
+            status: 'EXECUTED',
+            executedAt: DateTime.now(),
+          );
+        } else if (commandType == 'LOCK') {
+          await _hardwareService.lockNow();
+
+          await _apiService.ackCommand(
+            commandId: commandId,
+            status: 'EXECUTED',
+            executedAt: DateTime.now(),
+          );
+        } else if (commandType == 'LOCATE') {
+          final battery = await _hardwareService.getBatteryStatus();
+          final location = await _hardwareService.getLastKnownLocation();
+
+          final lat = location?['latitude'] as double? ?? 11.5972;
+          final lng = location?['longitude'] as double? ?? 37.3884;
+          final acc = location?['accuracy'] as double? ?? 15.0;
+
+          await _apiService.sendTelemetry(
+            latitude: lat,
+            longitude: lng,
+            accuracyMeters: acc,
+            batteryLevel: battery['level'] as int?,
+            isBatteryCharging: battery['is_charging'] as bool?,
+            triggerType: 'ON_DEMAND',
+            recordedAt: DateTime.now(),
+          );
+
+          await _apiService.ackCommand(
+            commandId: commandId,
+            status: 'EXECUTED',
+            executedAt: DateTime.now(),
+          );
+
+          if (mounted) {
+            setState(() {
+              _batteryLevel = battery['level'] as int;
+              _isBatteryCharging = battery['is_charging'] as bool;
+              _lastLocation = location;
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // Quietly ignore transient network polling errors
+    } finally {
+      _isProcessingCommands = false;
     }
   }
 
@@ -108,6 +244,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isBatteryCharging = battery['is_charging'] as bool;
         _lastLocation = location;
       });
+
+      // Also process any pending recovery commands immediately
+      await _checkAndProcessCommands();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
