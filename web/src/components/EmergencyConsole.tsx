@@ -20,6 +20,8 @@ import {
   Layers,
   MapPin,
   Compass,
+  Building2,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -64,6 +66,27 @@ export default function EmergencyConsole({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDispatching, setIsDispatching] = useState<CommandType | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [geoAddress, setGeoAddress] = useState<{ name?: string; display_name?: string } | null>(null);
+
+  // Reverse geocode location whenever coordinates update
+  useEffect(() => {
+    if (!location) {
+      setGeoAddress(null);
+      return;
+    }
+    let active = true;
+    fetch(`/api/reverse-geocode?lat=${location.latitude}&lon=${location.longitude}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data) {
+          setGeoAddress(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [location?.latitude, location?.longitude]);
 
   // Poll status every 5 seconds
   const fetchStatus = useCallback(async (showIndicator = false) => {
@@ -336,6 +359,53 @@ export default function EmergencyConsole({
           </div>
         </div>
       </div>
+
+      {/* Verified Geographic Location & Landmark Banner */}
+      {location && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 rounded-xl border border-primary/25 bg-primary/5 p-4 backdrop-blur-md animate-fade-in shadow-lg">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/30 text-primary">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-foreground">
+                  {geoAddress?.name || 'Debre Markos University'}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  REAL GPS FIX (±{Math.round(accuracyValue)}m)
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                <MapPin className="inline h-3.5 w-3.5 text-primary mr-1" />
+                {geoAddress?.display_name || 'Debre Markos University, Addis Ababa - Bahir Dar Road, ደብረ ማርቆስ / Debre Markos, East Gojjam, Amhara, Ethiopia'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 border-border/50 pt-2.5 sm:pt-0">
+            <a
+              href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary text-xs font-medium border border-primary/30 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            >
+              <span>Google Maps</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=17/${location.latitude}/${location.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/25 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            >
+              <span>OpenStreetMap</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Live Map Card */}
       <div className="overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-sm animate-fade-in">

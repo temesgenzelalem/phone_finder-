@@ -25,3 +25,5 @@ web/.env*.local
 .idea/
 .vscode/
 *.log
+*.apk
+release.apk

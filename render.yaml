@@ -39,3 +39,17 @@ services:
         value: database
       - key: RUN_MIGRATIONS
         value: "true"
+
+  - type: web
+    name: phone-finder-web
+    runtime: node
+    plan: free
+    region: ohio
+    rootDir: web
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BACKEND_API_URL
+        value: https://phone-finder-api.onrender.com
